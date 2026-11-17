@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>¡Jalón! · El tira y afloja de cartas</title>
+<meta name="description" content="Juego de tira y afloja con una sola ficha: saca una carta, jala la ficha hacia el lado que quieras y llévala a la META.">
+<meta name="theme-color" content="#1B1B1F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;700;800;900&display=swap">
+<style>
+  :root{
+    --ink:#1B1B1F; --paper:#FFFFFF; --bg:#F3F4F8;
+    --blue:#2F5BEA; --blue-l:#DCE6FF; --orange:#F06A0F; --orange-l:#FFE2CC;
+    --yellow:#FFD23F; --p1:#12A15A; --p2:#C2185B; --muted:#5A5E6B;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Nunito',system-ui,sans-serif}
+  body{min-height:100dvh;padding:max(12px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom))}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h1{margin:0;font-family:'Lilita One',sans-serif;font-weight:400;font-size:clamp(34px,7vw,56px);line-height:1}
+  h1 .a{color:var(--blue)} h1 .b{color:var(--orange)}
+  .ghost{appearance:none;border:2px solid var(--ink);background:var(--paper);color:var(--ink);font:800 15px 'Nunito',sans-serif;border-radius:999px;padding:0 14px;min-height:44px;cursor:pointer;white-space:nowrap}
+  .ghost:hover{background:var(--yellow)}
+  .board{background:var(--paper);border:3px solid var(--ink);border-radius:18px;padding:10px;box-shadow:0 6px 0 var(--ink)}
+  svg{display:block;width:100%;height:auto}
+  .cell{stroke:var(--ink);stroke-width:2}
+  .num{font:900 11px 'Nunito',sans-serif;pointer-events:none}
+  .target{stroke:var(--ink);stroke-width:6}
+  .pulse{animation:pulse 0.9s ease-in-out infinite alternate}
+  @keyframes pulse{from{opacity:1}to{opacity:.45}}
+  #token{transition:transform .16s ease-out}
+  #token.fast{transition:transform .07s linear}
+  .hud{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:stretch}
+  .card{width:96px;height:136px;border-radius:14px;border:3px solid var(--ink);background:var(--paper);display:flex;align-items:center;justify-content:center;font:400 60px 'Lilita One',sans-serif;box-shadow:0 5px 0 var(--ink);position:relative}
+  .card.back{background:repeating-linear-gradient(45deg,var(--blue) 0 10px,var(--orange) 10px 20px)}
+  .card small{position:absolute;font:900 13px 'Nunito',sans-serif;top:6px;left:9px}
+  .card small.br{top:auto;left:auto;bottom:6px;right:9px;transform:rotate(180deg)}
+  .card.flip{animation:flip .35s ease-out}
+  @keyframes flip{from{transform:rotateY(90deg)}to{transform:none}}
+  .panel{background:var(--paper);border:3px solid var(--ink);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;justify-content:center}
+  .status{margin:0;font-weight:900;font-size:clamp(17px,3.6vw,22px);line-height:1.25}
+  .sub{margin:0;font-size:14px;color:var(--muted);font-weight:700}
+  .who{display:inline-block;padding:2px 10px;border-radius:999px;color:#fff}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{appearance:none;border:3px solid var(--ink);border-radius:14px;min-height:52px;padding:0 18px;font:400 20px 'Lilita One',sans-serif;letter-spacing:.5px;cursor:pointer;box-shadow:0 4px 0 var(--ink);flex:1 1 140px;color:var(--ink);background:var(--yellow)}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn.left{background:var(--blue);color:#fff}
+  .btn.right{background:var(--orange);color:#fff}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;font-weight:700}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .ico{width:26px;height:26px;border-radius:6px;background:var(--ink);display:inline-flex;align-items:center;justify-content:center}
+  .score{display:flex;gap:8px;flex-wrap:wrap;font-weight:900;font-size:14px}
+  .score span{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;background:var(--paper)}
+  .toast{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-120%);background:var(--ink);color:#fff;font:900 17px 'Nunito',sans-serif;padding:12px 18px;border-radius:14px;transition:transform .25s;z-index:20;max-width:92vw;text-align:center}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  dialog{border:3px solid var(--ink);border-radius:20px;padding:22px;max-width:520px;width:calc(100% - 24px);box-shadow:0 8px 0 var(--ink)}
+  dialog::backdrop{background:rgba(27,27,31,.55)}
+  dialog h2{margin:0 0 8px;font:400 34px 'Lilita One',sans-serif}
+  dialog h3{margin:14px 0 6px;font:400 20px 'Lilita One',sans-serif;color:var(--blue)}
+  dialog p,dialog li{font-size:16px;line-height:1.5;margin:0 0 6px}
+  dialog ol{padding-left:20px;margin:0}
+  .modes{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .names{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .names label{font-weight:800;font-size:13px;display:flex;flex-direction:column;gap:4px}
+  .names input{font:800 16px 'Nunito',sans-serif;border:2px solid var(--ink);border-radius:10px;padding:10px;min-height:44px}
+  .win h2{font-size:42px;text-align:center}
+  .win p{text-align:center}
+  footer{text-align:center;font-size:13px;color:var(--muted);font-weight:700}
+  footer a{color:var(--blue)}
+  @media (max-width:560px){
+    .hud{grid-template-columns:1fr}
+    .cardrow{display:flex;gap:12px;align-items:center}
+    .card{width:72px;height:102px;font-size:44px}
+  }
+  @media (prefers-reduced-motion:reduce){#token,#token.fast{transition:none}.pulse,.card.flip{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="a">¡JA</span><span class="b">LÓN!</span></h1>
+    <div style="display:flex;gap:8px">
+      <button class="ghost" id="btnRules" type="button">Reglas</button>
+      <button class="ghost" id="btnNew" type="button">Nueva partida</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <svg id="svg" viewBox="-4 -4 1028 552" role="img" aria-label="Tablero de Jalón con la posición de la ficha"></svg>
+  </div>
+
+  <div class="hud">
+    <div class="cardrow">
+      <div class="card back" id="card" aria-live="polite" aria-label="Carta actual"></div>
+    </div>
+    <div class="panel">
+      <p class="status" id="status">Elige cómo jugar</p>
+      <p class="sub" id="sub"></p>
+      <div class="actions">
+        <button class="btn" id="btnDraw" type="button">Sacar carta</button>
+        <button class="btn left" id="btnLeft" type="button" hidden>◀ Izquierda</button>
+        <button class="btn right" id="btnRight" type="button" hidden>Derecha ▶</button>
+      </div>
+      <div class="score" id="score"></div>
+    </div>
+  </div>
+
+  <div class="legend" aria-label="Casillas especiales">
+    <span><span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span><b>Rayo</b>: vuelves a sacar carta</span>
+    <span><span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 12a1.6 1.6 0 1 1 1.6 1.6A3.4 3.4 0 1 1 15.4 10a5.2 5.2 0 1 1-5.2-3.4A7 7 0 1 1 5 12"/></svg></span><b>Remolino</b>: la ficha vuelve al INICIO</span>
+  </div>
+
+  <footer>Hecho con cartas del 1 al 10 · <a href="../">Más juegos</a></footer>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<dialog id="dlgStart">
+  <h2>¿Cómo juegan?</h2>
+  <p>Una sola ficha, dos jugadores. Cada uno la jala hacia el lado que le convenga.</p>
+  <div class="names">
+    <label>Jugador 1 <input id="n1" maxlength="14" value="Jugador 1"></label>
+    <label id="n2wrap">Jugador 2 <input id="n2" maxlength="14" value="Jugador 2"></label>
+  </div>
+  <div class="modes">
+    <button class="btn" id="modePvp" type="button">2 jugadores (mismo celular)</button>
+    <button class="btn left" id="modeCpu" type="button">Contra la compu</button>
+  </div>
+</dialog>
+
+<dialog id="dlgRules">
+  <h2>Reglas</h2>
+  <ol>
+    <li>La ficha empieza en el <b>INICIO</b>. Hay un mazo de 40 cartas (del 1 al 10, cuatro de cada una).</li>
+    <li>En tu turno sacas una carta y mueves la ficha <b>ese número de casillas</b>, a la izquierda o a la derecha: tú eliges.</li>
+    <li>Los dos mueven <b>la misma ficha</b>. El INICIO cuenta como casilla.</li>
+    <li>Quien haga que la ficha <b>llegue o pase la META</b> gana, por cualquiera de los dos lados.</li>
+  </ol>
+  <h3>Casillas especiales</h3>
+  <p><b>Rayo:</b> si la ficha termina ahí, vuelves a sacar carta.<br><b>Remolino:</b> la ficha regresa al INICIO.</p>
+  <h3>El truco</h3>
+  <p>Si dejas la ficha a 10 casillas o menos de una meta, tu rival puede ganar con una sola carta.</p>
+  <div class="actions" style="margin-top:14px"><button class="btn" type="button" id="closeRules">¡Entendido!</button></div>
+</dialog>
+
+<dialog id="dlgWin" class="win">
+  <h2 id="winTitle">¡Ganaste!</h2>
+  <p id="winText"></p>
+  <div class="actions" style="margin-top:14px">
+    <button class="btn" type="button" id="again">Revancha</button>
+    <button class="btn left" type="button" id="changeMode">Cambiar modo</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const C = 68, GOAL = 25;
+  const RAYO = new Set([5, 15]), REMOLINO = new Set([11, 21]);
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = id => document.getElementById(id);
+  const svg = $('svg');
+
+  // ---- Board geometry -------------------------------------------------
+  function sideCells(mirror) {
+    let cells = [[6,0],[5,0],[4,0],[3,0],[2,0],[1,0],[0,0]];
+    for (let r = 1; r <= 7; r++) cells.push([0, r]);
+    for (let c = 1; c <= 5; c++) cells.push([c, 7]);
+    for (let r = 6; r >= 2; r--) cells.push([5, r]);
+    return mirror ? cells.map(([c, r]) => [14 - c, r]) : cells;
+  }
+  const SIDES = { '-1': sideCells(false), '1': sideCells(true) };
+  function center(p) {
+    if (p === 0) return [7 * C + C / 2, C / 2];
+    if (Math.abs(p) >= GOAL) return [7.5 * C, 3 * C];
+    const [c, r] = SIDES[Math.sign(p)][Math.abs(p) - 1];
+    return [c * C + C / 2, r * C + C / 2];
+  }
+  function el(tag, attrs, parent = svg) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    parent.appendChild(n);
+    return n;
+  }
+  const BOLT = 'M13 2 4 14h7l-1 8 9-12h-7l1-8z';
+  const SPIRAL = 'M12 12a1.6 1.6 0 1 1 1.6 1.6A3.4 3.4 0 1 1 15.4 10a5.2 5.2 0 1 1-5.2-3.4A7 7 0 1 1 5 12';
+  const rects = {};
+
+  function drawBoard() {
+    // card zones inside the U shapes
+    el('rect', { x: 1*C + 74, y: C + 90, width: 124, height: 176, rx: 12, fill: 'none', stroke: '#2F5BEA', 'stroke-width': 3, 'stroke-dasharray': '10 8' });
+    const t1 = el('text', { x: 3*C, y: C + 300, 'text-anchor': 'middle', fill: '#2F5BEA', 'font-family': 'Lilita One', 'font-size': 22 }); t1.textContent = 'MAZO';
+    const deckTxt = el('text', { id: 'deckCount', x: 3*C, y: C + 186, 'text-anchor': 'middle', fill: '#2F5BEA', 'font-family': 'Lilita One', 'font-size': 40 }); deckTxt.textContent = '40';
+    el('rect', { x: 10*C + 74, y: C + 90, width: 124, height: 176, rx: 12, fill: 'none', stroke: '#F06A0F', 'stroke-width': 3, 'stroke-dasharray': '10 8' });
+    const t2 = el('text', { x: 12*C, y: C + 300, 'text-anchor': 'middle', fill: '#F06A0F', 'font-family': 'Lilita One', 'font-size': 22 }); t2.textContent = 'ÚLTIMA';
+    const lastTxt = el('text', { id: 'lastCard', x: 12*C, y: C + 198, 'text-anchor': 'middle', fill: '#F06A0F', 'font-family': 'Lilita One', 'font-size': 64 }); lastTxt.textContent = '–';
+
+    for (const s of [-1, 1]) {
+      SIDES[s].forEach(([c, r], i) => {
+        const k = i + 1, p = s * k;
+        const special = RAYO.has(k) ? 'rayo' : REMOLINO.has(k) ? 'rem' : null;
+        const fill = special ? (s < 0 ? '#2F5BEA' : '#F06A0F') : (s < 0 ? '#DCE6FF' : '#FFE2CC');
+        rects[p] = el('rect', { x: c*C, y: r*C, width: C, height: C, fill, class: 'cell' });
+        const n = el('text', { x: c*C + 6, y: r*C + 15, class: 'num', fill: special ? '#fff' : '#1B1B1F' }); n.textContent = k;
+        if (special) {
+          const g = el('g', { transform: `translate(${c*C + 17} ${r*C + 17}) scale(1.4)`, 'pointer-events': 'none' });
+          el('path', { d: special === 'rayo' ? BOLT : SPIRAL, fill: 'none', stroke: '#fff', 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, g);
+        }
+      });
+    }
+    rects[0] = el('rect', { x: 7*C, y: 0, width: C, height: C, fill: '#FFD23F', class: 'cell', 'stroke-width': 3 });
+    const ini = el('text', { x: 7.5*C, y: C/2 + 6, 'text-anchor': 'middle', 'font-family': 'Lilita One', 'font-size': 15, fill: '#1B1B1F' }); ini.textContent = 'INICIO';
+
+    // META with checkered strips
+    const defs = el('defs', {});
+    const pat = el('pattern', { id: 'chk', width: 18, height: 18, patternUnits: 'userSpaceOnUse' }, defs);
+    el('rect', { width: 18, height: 18, fill: '#fff' }, pat);
+    el('rect', { width: 9, height: 9, fill: '#1B1B1F' }, pat);
+    el('rect', { x: 9, y: 9, width: 9, height: 9, fill: '#1B1B1F' }, pat);
+    rects.meta = el('rect', { x: 6*C, y: 2*C, width: 3*C, height: 2*C, fill: '#fff', class: 'cell', 'stroke-width': 3 });
+    el('rect', { x: 6*C + 1.5, y: 2*C + 1.5, width: 3*C - 3, height: 18, fill: 'url(#chk)' });
+    el('rect', { x: 6*C + 1.5, y: 4*C - 19.5, width: 3*C - 3, height: 18, fill: 'url(#chk)' });
+    const m = el('text', { x: 7.5*C, y: 3*C + 16, 'text-anchor': 'middle', 'font-family': 'Lilita One', 'font-size': 46, fill: '#1B1B1F' }); m.textContent = '¡META!';
+
+    // token
+    const tok = el('g', { id: 'token' });
+    el('ellipse', { cx: 0, cy: 14, rx: 18, ry: 6, fill: 'rgba(0,0,0,.25)' }, tok);
+    el('circle', { cx: 0, cy: 0, r: 20, fill: '#1B1B1F', stroke: '#fff', 'stroke-width': 4 }, tok);
+    el('circle', { cx: -6, cy: -7, r: 5, fill: 'rgba(255,255,255,.45)' }, tok);
+  }
+
+  // ---- State ----------------------------------------------------------
+  const S = { p: 0, turn: 0, deck: [], card: null, phase: 'idle', mode: 'pvp', names: ['Jugador 1', 'Jugador 2'], wins: [0, 0], starter: 0 };
+  const COLORS = ['var(--p1)', 'var(--p2)'];
+
+  function newDeck() {
+    const d = [];
+    for (let v = 1; v <= 10; v++) for (let i = 0; i < 4; i++) d.push(v);
+    for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; }
+    return d;
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function placeToken(p, fast) {
+    const [x, y] = center(p);
+    const t = $('token');
+    t.classList.toggle('fast', !!fast);
+    t.style.transform = `translate(${x}px, ${y}px)`;
+  }
+  function clamp(p) { return Math.max(-GOAL, Math.min(GOAL, p)); }
+  function toast(msg, ms = 1600) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  function who(i) { return `<span class="who" style="background:${COLORS[i]}">${escapeHtml(S.names[i])}</span>`; }
+  function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  function clearTargets() {
+    Object.values(rects).forEach(r => r.classList.remove('target', 'pulse'));
+  }
+  function showTargets() {
+    clearTargets();
+    for (const s of [-1, 1]) {
+      const q = clamp(S.p + s * S.card);
+      const r = Math.abs(q) >= GOAL ? rects.meta : rects[q];
+      r.classList.add('target', 'pulse');
+    }
+  }
+
+  function render() {
+    const cpuTurn = S.mode === 'cpu' && S.turn === 1;
+    $('deckCount').textContent = S.deck.length;
+    const card = $('card');
+    if (S.card == null) { card.className = 'card back'; card.innerHTML = ''; }
+    $('btnDraw').hidden = S.phase !== 'draw';
+    $('btnDraw').disabled = cpuTurn;
+    $('btnLeft').hidden = $('btnRight').hidden = S.phase !== 'choose';
+    $('btnLeft').disabled = $('btnRight').disabled = cpuTurn;
+    if (S.phase === 'draw') {
+      $('status').innerHTML = `Turno de ${who(S.turn)}`;
+      $('sub').textContent = cpuTurn ? 'La compu está pensando…' : 'Saca una carta del mazo.';
+    } else if (S.phase === 'choose') {
+      $('status').innerHTML = `${who(S.turn)} sacó un ${S.card}`;
+      $('sub').textContent = cpuTurn ? 'La compu está eligiendo hacia dónde jalar…' : '¿Hacia qué lado jalas la ficha?';
+    } else if (S.phase === 'moving') {
+      $('sub').textContent = '';
+    }
+    $('score').innerHTML = `<span style="color:${COLORS[0]}">${escapeHtml(S.names[0])}: ${S.wins[0]}</span><span style="color:${COLORS[1]}">${escapeHtml(S.names[1])}: ${S.wins[1]}</span>`;
+  }
+
+  function draw() {
+    if (S.phase !== 'draw') return;
+    if (!S.deck.length) { S.deck = newDeck(); toast('Se acabó el mazo: ¡a barajar de nuevo!'); }
+    S.card = S.deck.pop();
+    const card = $('card');
+    card.className = 'card flip';
+    card.style.color = S.turn === 0 ? 'var(--p1)' : 'var(--p2)';
+    card.innerHTML = `<small>${S.card}</small>${S.card}<small class="br">${S.card}</small>`;
+    $('lastCard').textContent = S.card;
+    S.phase = 'choose';
+    showTargets();
+    render();
+    if (S.mode === 'cpu' && S.turn === 1) setTimeout(cpuChoose, 900);
+  }
+
+  async function move(dir) {
+    if (S.phase !== 'choose') return;
+    S.phase = 'moving'; clearTargets(); render();
+    const target = clamp(S.p + dir * S.card);
+    while (S.p !== target) {
+      S.p += Math.sign(target - S.p);
+      placeToken(S.p);
+      await sleep(170);
+    }
+    await sleep(150);
+    const k = Math.abs(S.p);
+    if (k >= GOAL) return win(S.turn);
+    if (REMOLINO.has(k)) {
+      toast('¡Remolino! La ficha vuelve al INICIO');
+      await sleep(700);
+      const step = -Math.sign(S.p);
+      while (S.p !== 0) { S.p += step; placeToken(S.p, true); await sleep(75); }
+      await sleep(250);
+      nextTurn(false);
+    } else if (RAYO.has(k)) {
+      toast(`¡Rayo! ${S.names[S.turn]} vuelve a sacar`);
+      await sleep(500);
+      nextTurn(true);
+    } else nextTurn(false);
+  }
+
+  function nextTurn(same) {
+    if (!same) S.turn = 1 - S.turn;
+    S.card = null; S.phase = 'draw'; render();
+    if (S.mode === 'cpu' && S.turn === 1) setTimeout(draw, 1000);
+  }
+
+  // ---- CPU: pick the side that wins, or the one that leaves the rival the worst odds
+  function cpuChoose() {
+    const deck = S.deck.length ? S.deck : newDeck();
+    const odds = d => deck.filter(v => v >= d).length / deck.length; // chance next card reaches distance d
+    let best = null;
+    for (const dir of [-1, 1]) {
+      let q = clamp(S.p + dir * S.card);
+      let score;
+      const k = Math.abs(q);
+      if (k >= GOAL) score = -100;
+      else if (REMOLINO.has(k)) score = odds(GOAL);          // back to INICIO: nobody reaches in one card
+      else if (RAYO.has(k)) score = -odds(GOAL - k);         // I draw again: my chance to finish
+      else score = odds(GOAL - k);                           // rival's chance to finish
+      score += Math.random() * 0.01;
+      if (!best || score < best.score) best = { dir, score };
+    }
+    move(best.dir);
+  }
+
+  function win(i) {
+    S.phase = 'over'; S.wins[i]++; render();
+    const vsCpu = S.mode === 'cpu';
+    $('winTitle').textContent = vsCpu && i === 1 ? '¡Ganó la compu!' : `¡Ganó ${S.names[i]}!`;
+    $('winText').textContent = `Llevó la ficha a la META con un ${S.card}. Marcador ${S.wins[0]} – ${S.wins[1]}.`;
+    setTimeout(() => $('dlgWin').showModal(), 400);
+  }
+
+  function startGame() {
+    S.p = 0; S.deck = newDeck(); S.card = null; S.phase = 'draw';
+    S.turn = S.starter; S.starter = 1 - S.starter; // alternate who starts
+    clearTargets(); placeToken(0); $('lastCard').textContent = '–';
+    render();
+    if (S.mode === 'cpu' && S.turn === 1) setTimeout(draw, 1000);
+  }
+  function chooseMode(mode) {
+    S.mode = mode;
+    S.names = [$('n1').value.trim() || 'Jugador 1', mode === 'cpu' ? 'Compu' : ($('n2').value.trim() || 'Jugador 2')];
+    S.wins = [0, 0]; S.starter = 0;
+    $('dlgStart').close();
+    startGame();
+  }
+
+  // ---- Wire up ---------------------------------------------------------
+  drawBoard(); placeToken(0, true);
+  $('btnDraw').onclick = draw;
+  $('btnLeft').onclick = () => move(-1);
+  $('btnRight').onclick = () => move(1);
+  $('modePvp').onclick = () => chooseMode('pvp');
+  $('modeCpu').onclick = () => chooseMode('cpu');
+  $('btnRules').onclick = () => $('dlgRules').showModal();
+  $('closeRules').onclick = () => $('dlgRules').close();
+  $('btnNew').onclick = () => $('dlgStart').showModal();
+  $('again').onclick = () => { $('dlgWin').close(); startGame(); };
+  $('changeMode').onclick = () => { $('dlgWin').close(); $('dlgStart').showModal(); };
+  $('dlgStart').addEventListener('cancel', e => { if (S.phase === 'idle') e.preventDefault(); });
+  document.addEventListener('keydown', e => {
+    if (document.querySelector('dialog[open]')) return;
+    if (S.mode === 'cpu' && S.turn === 1) return;
+    if (e.key === ' ' || e.key === 'Enter') { if (S.phase === 'draw') { e.preventDefault(); draw(); } }
+    if (e.key === 'ArrowLeft') move(-1);
+    if (e.key === 'ArrowRight') move(1);
+  });
+  render();
+  $('dlgStart').showModal();
+})();
+</script>
+</body>
+</html>
