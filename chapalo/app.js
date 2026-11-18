@@ -1,7 +1,14 @@
-import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js';
-import { SYMBOLS } from './symbols.js';
+import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=4';
+import { SYMBOLS } from './symbols.js?v=4';
 
 const $ = id => document.getElementById(id);
+window.addEventListener('error', e => toast('Error: ' + (e.message || e), 6000));
+window.addEventListener('unhandledrejection', e => toast('Error: ' + (e.reason?.message || e.reason), 6000));
+// Tamaño de símbolos en px según el ancho real de cada carta (compatible con Safari antiguo)
+const sizer = new ResizeObserver(entries => {
+  for (const en of entries) en.target.style.setProperty('--cw', (en.target.clientWidth / 100) + 'px');
+});
+document.querySelectorAll('.card').forEach(c => sizer.observe(c));
 const store = {
   get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
