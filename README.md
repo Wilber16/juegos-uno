@@ -15,7 +15,7 @@ Código en [`jalon/index.html`](jalon/index.html): un solo archivo HTML, sin dep
 
 ## ¡Chápalo!
 
-Juego de rapidez visual con temática limeña (modo "El Pozo"). Se reparten todas las cartas, una va al centro; cada jugador busca el símbolo que su carta comparte con la del centro y la bota encima. Gana quien se queda sin cartas primero. Fallar bloquea tu carta 2 segundos.
+Juego de rapidez visual con temática limeña (modo "El Pozo"). Se reparten todas las cartas, una va al centro; cada jugador busca el símbolo que su carta comparte con la del centro y la bota encima. Gana quien se queda sin cartas primero. Fallar bloquea tu carta 2 segundos. Puedes pasar entre tus cartas (flechas o deslizando) y jugar cualquiera de ellas, como con el mazo en la mano.
 
 - Mazos: Mini (13 cartas, 4 símbolos), Rápido (31, 6) y Clásico (55, 8). Cada par de cartas comparte exactamente un símbolo (plano proyectivo).
 - Modos actuales: contra 1–3 bots (fácil, normal, pro) y duelo en un celular (pantalla dividida).

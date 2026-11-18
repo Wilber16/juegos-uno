@@ -54,7 +54,7 @@ function layoutFor(card, seed) {
     return { sym, x, y, w, f: w * .78, r: Math.round(rand() * 360 - 180) };
   });
 }
-function paintCard(el, card, seed, onTap) {
+function paintCard(el, card, seed, interactive) {
   if (!card) { el.querySelectorAll('.sym').forEach(n => n.remove()); el.dataset.cid = ''; return false; }
   if (el.dataset.cid === String(card.id)) return false;
   el.dataset.cid = card.id;
@@ -69,10 +69,9 @@ function paintCard(el, card, seed, onTap) {
     b.style.cssText = `--x:${p.x}%;--y:${p.y}%;--w:${p.w}%;--f:${p.f};--r:${p.r}deg`;
     if (info.img) { const im = document.createElement('img'); im.src = info.img; im.alt = ''; b.appendChild(im); }
     else b.textContent = info.e;
-    if (onTap) b.addEventListener('pointerdown', e => { e.preventDefault(); onTap(p.sym, b); });
     el.appendChild(b);
   }
-  el.classList.toggle('tappable', !!onTap);
+  el.classList.toggle('tappable', !!interactive);
   return true;
 }
 function pulse(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
@@ -104,16 +103,41 @@ function baseGame(players, humans, screenId, centerEl) {
     seed, humans, timers: [], ticker: null, playing: false,
     prevCenter: null, changedAt: 0,
   };
-  g.tap = (pid, sym) => {
+  g.tap = (pid, sym, cardId) => {
     if (!g.playing) return;
     const now = Date.now();
     const st = g.state;
     // Si el centro acaba de cambiar y tu símbolo era el correcto con la carta anterior: te ganaron, sin castigo.
     if (!st.center.s.includes(sym) && g.prevCenter?.s.includes(sym) && now - g.changedAt < 450) return g.onResult(pid, 'stale', sym);
-    const { state, result } = apply(st, { type: 'tap', playerId: pid, symbol: sym, rev: st.rev, now });
+    const { state, result } = apply(st, { type: 'tap', playerId: pid, symbol: sym, rev: st.rev, now, cardId });
     if (state !== st && state.rev !== st.rev) { g.prevCenter = st.center; g.changedAt = now; }
     g.state = state;
     g.onResult(pid, result, sym);
+  };
+  for (const h of humans) { h.cursor = 0; h.el._g = g; h.el._h = h; }
+  g.pileOf = h => g.state.players.find(x => x.id === h.id).pile;
+  g.renderHumans = () => {
+    for (const h of g.humans) {
+      const pile = g.pileOf(h);
+      h.cursor = Math.min(h.cursor, Math.max(0, pile.length - 1));
+      if (paintCard(h.el, pile[h.cursor], g.seed, true) && !h.sliding) pulse(h.el, 'in');
+      h.sliding = false;
+      h.nav.querySelector('.pos').textContent = pile.length ? h.cursor + 1 : 0;
+      h.nav.querySelector('.tot').textContent = pile.length;
+      h.nav.querySelectorAll('button').forEach(b => { b.disabled = pile.length <= 1; });
+    }
+  };
+  g.navigate = (h, d) => {
+    const len = g.pileOf(h).length;
+    if (len <= 1) return;
+    h.cursor = (h.cursor + d + len) % len;
+    h.sliding = true;
+    g.renderHumans();
+    pulse(h.el, d > 0 ? 'slideL' : 'slideR');
+  };
+  g.tapHuman = (h, sym) => {
+    const card = g.pileOf(h)[h.cursor];
+    if (card) g.tap(h.id, sym, card.id);
   };
   g.paintCenter = () => {
     const changed = paintCard(centerEl, g.state.center, g.seed, null);
@@ -167,7 +191,7 @@ function botGame() {
   const me = { id: 'me', name: $('name').value.trim() || 'Tú' };
   const bots = BOT_NAMES.slice(0, opts.bots).map((n, i) => ({ id: 'bot' + i, name: n }));
   const myEl = $('myCard');
-  const g = baseGame([me, ...bots], [{ id: 'me', el: myEl }], 'game', $('centerCard'));
+  const g = baseGame([me, ...bots], [{ id: 'me', el: myEl, nav: $('nav0') }], 'game', $('centerCard'));
   const lvl = BOT_LEVEL[opts.level], speed = DECK_SPEED[opts.deck];
   $('myName').textContent = me.name;
   $('lastMsg').innerHTML = '&nbsp;';
@@ -177,9 +201,7 @@ function botGame() {
   g.render = () => {
     const st = g.state;
     g.paintCenter();
-    const mine = st.players[0];
-    if (paintCard(myEl, mine.pile[0], g.seed, sym => g.tap('me', sym))) pulse(myEl, 'in');
-    $('myCount').textContent = mine.pile.length;
+    g.renderHumans();
     const now = Date.now();
     $('opps').innerHTML = st.players.slice(1).map(p =>
       `<span class="opp${p.lockUntil > now ? ' locked' : ''}" data-id="${p.id}">${p.name} <b>${p.pile.length}</b></span>`).join('');
@@ -234,13 +256,10 @@ function duelGame() {
   const players = [{ id: 'p1', name: 'Jugador 1' }, { id: 'p2', name: 'Jugador 2' }];
   const c1 = $('card1'), c2 = $('card2'), cc = $('centerDuel');
   [c1, c2, cc].forEach(el => { el.dataset.cid = ''; });
-  const g = baseGame(players, [{ id: 'p1', el: c1 }, { id: 'p2', el: c2 }], 'duel', cc);
+  const g = baseGame(players, [{ id: 'p1', el: c1, nav: $('nav1') }, { id: 'p2', el: c2, nav: $('nav2'), flip: true }], 'duel', cc);
   g.render = () => {
-    const [a, b] = g.state.players;
     g.paintCenter();
-    if (paintCard(c1, a.pile[0], g.seed, sym => g.tap('p1', sym))) pulse(c1, 'in');
-    if (paintCard(c2, b.pile[0], g.seed, sym => g.tap('p2', sym))) pulse(c2, 'in');
-    $('c1').textContent = a.pile.length; $('c2').textContent = b.pile.length;
+    g.renderHumans();
   };
   g.onResult = (pid, result, sym) => {
     const el = pid === 'p1' ? c1 : c2;
@@ -258,6 +277,35 @@ function duelGame() {
   };
   return g;
 }
+
+// ---------------- Toques, deslizar y flechas ----------------
+// Tocar un símbolo = jugar. Deslizar a los lados = pasar de carta.
+const starts = new Map();
+for (const [cardId, navId] of [['myCard', 'nav0'], ['card1', 'nav1'], ['card2', 'nav2']]) {
+  const el = $(cardId);
+  el.addEventListener('pointerdown', e => {
+    if (!el._g?.playing) return;
+    e.preventDefault();
+    starts.set(e.pointerId, { x: e.clientX, y: e.clientY, sym: e.target.closest('.sym')?.dataset.sym });
+  });
+  el.addEventListener('pointerup', e => {
+    const s = starts.get(e.pointerId); starts.delete(e.pointerId);
+    if (!s || !el._g?.playing) return;
+    let dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (el._h.flip) { dx = -dx; dy = -dy; }
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) el._g.navigate(el._h, dx < 0 ? 1 : -1);
+    else if (s.sym != null && Math.hypot(dx, dy) < 30) el._g.tapHuman(el._h, Number(s.sym));
+  });
+  el.addEventListener('pointercancel', e => starts.delete(e.pointerId));
+  $(navId).querySelectorAll('button').forEach(b =>
+    b.addEventListener('click', () => { if (el._g?.playing) el._g.navigate(el._h, Number(b.dataset.d)); }));
+}
+document.addEventListener('keydown', e => {
+  const h = $('myCard')._h, g = $('myCard')._g;
+  if (!g?.playing || G !== g) return;
+  if (e.key === 'ArrowRight') g.navigate(h, 1);
+  if (e.key === 'ArrowLeft') g.navigate(h, -1);
+});
 
 // ---------------- Fin / salir ----------------
 $('again').onclick = () => { $('dlgEnd').close(); start(); };

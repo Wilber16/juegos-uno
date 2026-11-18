@@ -58,4 +58,15 @@ assert.equal(r.result, 'win');
 assert.equal(g.winner, 'b');
 assert.equal(apply(g, { type: 'tap', playerId: 'a', symbol: 0, rev: g.rev, now: t }).result, 'ignored');
 
+// 5. Jugar una carta del medio de tu mazo
+g = newGame(two, 'rapido', 3);
+const pick = g.players[0].pile[4];
+const sym5 = sharedSymbol(pick.s, g.center.s);
+r = apply(g, { type: 'tap', playerId: 'a', symbol: sym5, rev: g.rev, now: 0, cardId: pick.id });
+assert.equal(r.result, 'ok');
+assert.equal(r.state.center.id, pick.id);
+assert.equal(r.state.players[0].pile.length, g.players[0].pile.length - 1);
+assert.ok(!r.state.players[0].pile.some(c => c.id === pick.id));
+assert.equal(apply(g, { type: 'tap', playerId: 'a', symbol: sym5, rev: g.rev, now: 0, cardId: 9999 }).result, 'ignored');
+
 console.log('OK: todas las pruebas del motor pasaron');

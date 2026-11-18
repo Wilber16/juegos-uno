@@ -42,6 +42,7 @@ button{font-family:inherit}
 .sym{position:absolute;transform:translate(-50%,-50%) rotate(var(--r));left:var(--x);top:var(--y);width:var(--w);height:var(--w);display:flex;align-items:center;justify-content:center;border:0;background:none;padding:0;cursor:pointer;font-size:calc(var(--f) * 1cqw);line-height:1;border-radius:50%;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
 .sym img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .card:not(.tappable) .sym{cursor:default;pointer-events:none}
+.card.tappable{touch-action:none}
 .sym.hit{animation:hit .7s ease-out}
 .sym.glow{animation:glow 1s ease-out}
 @keyframes hit{0%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1)}40%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1.5)}100%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1)}}
@@ -66,7 +67,7 @@ button{font-family:inherit}
 .center-zone{flex:1;justify-content:center}
 .me-zone{padding-bottom:4px}
 #centerCard{width:min(68vw,32dvh,330px)}
-#myCard{width:min(88vw,42dvh,420px)}
+#myCard{width:min(88vw,40dvh,420px)}
 .who{margin:0;font-weight:900;color:var(--yel);min-height:22px;text-align:center}
 .count{margin:0;font-weight:800;color:var(--muted)}
 .count b{font-family:'Bungee',sans-serif;font-weight:400;color:var(--grn);font-size:20px}
@@ -78,7 +79,7 @@ button{font-family:inherit}
 .half.top .count b{color:var(--mag)}
 .mid{position:relative;display:flex;align-items:center;justify-content:center;width:100%}
 .mid .icon{position:absolute;left:0;top:50%;transform:translateY(-50%)}
-#card1,#card2{width:min(84vw,33dvh,400px)}
+#card1,#card2{width:min(80vw,31dvh,380px)}
 #centerDuel{width:min(56vw,21dvh,260px)}
 
 /* ---------- Avisos ---------- */
@@ -96,3 +97,12 @@ dialog ol{padding-left:22px}
 .row .big{flex:1}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- Navegar el mazo ---------- */
+.nav{display:flex;align-items:center;justify-content:center;gap:14px}
+.nav .icon:disabled{opacity:.3}
+.nav .count b{font-size:18px}
+.card.slideL{animation:slideL .22s ease-out}
+.card.slideR{animation:slideR .22s ease-out}
+@keyframes slideL{from{transform:translateX(30%) rotate(8deg);opacity:.3}to{transform:none;opacity:1}}
+@keyframes slideR{from{transform:translateX(-30%) rotate(-8deg);opacity:.3}to{transform:none;opacity:1}}

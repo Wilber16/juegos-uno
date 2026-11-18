@@ -83,7 +83,8 @@ export function newGame(players, deckKey = 'rapido', seed = Date.now()) {
   };
 }
 
-// action: {type:'tap', playerId, symbol, rev, now}
+// action: {type:'tap', playerId, symbol, rev, now, cardId?}
+// cardId: la carta de tu mazo que estás mirando (puedes jugar cualquiera). Sin cardId = la de arriba.
 // Devuelve {state, result} con result: 'ok' | 'win' | 'wrong' | 'stale' | 'locked' | 'ignored'
 export function apply(state, action) {
   if (state.status !== 'playing' || action.type !== 'tap') return { state, result: 'ignored' };
@@ -93,7 +94,8 @@ export function apply(state, action) {
   const now = action.now ?? Date.now();
   if (now < me.lockUntil) return { state, result: 'locked' };
   if (action.rev !== state.rev) return { state, result: 'stale' }; // el centro cambió antes de tu toque
-  const top = me.pile[0];
+  const at = action.cardId == null ? 0 : me.pile.findIndex(c => c.id === action.cardId);
+  const top = me.pile[at];
   if (!top || !top.s.includes(action.symbol)) return { state, result: 'ignored' };
 
   const players = state.players.slice();
@@ -101,7 +103,7 @@ export function apply(state, action) {
     players[idx] = { ...me, lockUntil: now + PENALTY_MS };
     return { state: { ...state, players }, result: 'wrong' };
   }
-  const pile = me.pile.slice(1);
+  const pile = me.pile.filter((_, i) => i !== at);
   players[idx] = { ...me, pile };
   const next = {
     ...state,

@@ -74,14 +74,22 @@
   </div>
   <div class="zone me-zone">
     <div class="card mine" id="myCard"><div class="lock" hidden><span></span></div></div>
-    <p class="count"><span id="myName">Tú</span> · <b id="myCount">0</b> cartas</p>
+    <div class="nav" id="nav0">
+      <button type="button" class="icon" data-d="-1" aria-label="Carta anterior"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <p class="count"><span id="myName">Tú</span> · <b class="pos">1</b> de <b class="tot">0</b></p>
+      <button type="button" class="icon" data-d="1" aria-label="Carta siguiente"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
   </div>
 </section>
 
 <!-- DUELO en un celular -->
 <section id="duel" class="screen" aria-label="Duelo en un celular">
   <div class="half top">
-    <p class="count"><span>Jugador 2</span> · <b id="c2">0</b></p>
+    <div class="nav" id="nav2">
+      <button type="button" class="icon" data-d="-1" aria-label="Carta anterior"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <p class="count"><span>Jugador 2</span> · <b class="pos">1</b> de <b class="tot">0</b></p>
+      <button type="button" class="icon" data-d="1" aria-label="Carta siguiente"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
     <div class="card p2" id="card2"><div class="lock" hidden><span></span></div></div>
   </div>
   <div class="mid">
@@ -92,7 +100,11 @@
   </div>
   <div class="half bottom">
     <div class="card p1" id="card1"><div class="lock" hidden><span></span></div></div>
-    <p class="count"><span>Jugador 1</span> · <b id="c1">0</b></p>
+    <div class="nav" id="nav1">
+      <button type="button" class="icon" data-d="-1" aria-label="Carta anterior"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <p class="count"><span>Jugador 1</span> · <b class="pos">1</b> de <b class="tot">0</b></p>
+      <button type="button" class="icon" data-d="1" aria-label="Carta siguiente"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
   </div>
 </section>
 
@@ -113,6 +125,7 @@
   <ol>
     <li>Se reparten todas las cartas y una queda en el <b>centro</b>.</li>
     <li>Tu carta y la del centro siempre comparten <b>un solo símbolo</b>. Encuéntralo y tócalo en tu carta.</li>
+    <li>Puedes <b>pasar entre tus cartas</b> con las flechas o deslizando, y jugar cualquiera de ellas.</li>
     <li>Si eres el primero, tu carta se va al centro y te toca la siguiente.</li>
     <li>Si tocas uno equivocado, tu carta se <b>bloquea 2 segundos</b>.</li>
     <li>El primero que se queda <b>sin cartas</b> gana.</li>
