@@ -1,6 +1,6 @@
-import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=5';
-import { SYMBOLS } from './symbols.js?v=5';
-import { onlineAvailable, connect } from './net.js?v=5';
+import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=6';
+import { SYMBOLS } from './symbols.js?v=6';
+import { onlineAvailable, connect } from './net.js?v=6';
 
 const $ = id => document.getElementById(id);
 window.addEventListener('error', e => toast('Error: ' + (e.message || e), 6000));

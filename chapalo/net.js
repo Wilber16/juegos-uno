@@ -1,7 +1,7 @@
 // Capa de red de ¡Chápalo! — todo lo que toca Firebase pasa por aquí.
 // Rutas relativas a chapalo/rooms. Con ?fake=1 en la URL se usa un backend
 // simulado en el navegador (localStorage, para probar con dos pestañas sin Firebase).
-import { firebaseConfig } from './firebase-config.js?v=5';
+import { firebaseConfig } from './firebase-config.js?v=6';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const ROOT = 'chapalo/rooms';
