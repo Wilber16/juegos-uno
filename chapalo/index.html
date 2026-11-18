@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101C36">
+<title>¡Chápalo! · Encuentra el símbolo</title>
+<meta name="description" content="Juego de rapidez visual con temática limeña: encuentra el símbolo que tu carta comparte con la del centro y quédate sin cartas primero.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOBBY -->
+<section id="lobby" class="screen active" aria-labelledby="ttl">
+  <div class="lobby-box">
+    <h1 id="ttl" class="logo"><span class="c1">¡CHÁ</span><span class="c2">PA</span><span class="c3">LO!</span></h1>
+    <p class="tag">Encuentra el símbolo repetido, bota tu carta al centro y quédate sin cartas primero.</p>
+
+    <label class="field">Tu nombre
+      <input id="name" maxlength="14" autocomplete="nickname" placeholder="Tu nombre">
+    </label>
+
+    <fieldset class="group">
+      <legend>Modo</legend>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-v="bots" class="on">Contra bots</button>
+        <button type="button" data-v="duel">Duelo en 1 celular</button>
+        <button type="button" data-v="online" disabled>En línea <small>pronto</small></button>
+      </div>
+    </fieldset>
+
+    <fieldset class="group" id="botsOpts">
+      <legend>Bots</legend>
+      <div class="seg" id="botsSeg">
+        <button type="button" data-v="1" class="on">1</button>
+        <button type="button" data-v="2">2</button>
+        <button type="button" data-v="3">3</button>
+      </div>
+      <div class="seg" id="levelSeg">
+        <button type="button" data-v="facil">Fácil</button>
+        <button type="button" data-v="normal" class="on">Normal</button>
+        <button type="button" data-v="pro">Pro</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Mazo</legend>
+      <div class="seg col" id="deckSeg">
+        <button type="button" data-v="mini"><b>Mini</b> 13 cartas · 4 símbolos</button>
+        <button type="button" data-v="rapido" class="on"><b>Rápido</b> 31 cartas · 6 símbolos</button>
+        <button type="button" data-v="clasico"><b>Clásico</b> 55 cartas · 8 símbolos</button>
+      </div>
+    </fieldset>
+
+    <button type="button" class="big" id="play">¡A jugar!</button>
+    <button type="button" class="link" id="howBtn">¿Cómo se juega?</button>
+  </div>
+</section>
+
+<!-- PARTIDA (bots) -->
+<section id="game" class="screen" aria-label="Partida">
+  <header class="bar">
+    <button type="button" class="icon" id="quit" aria-label="Salir al menú">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="opps" id="opps"></div>
+  </header>
+  <div class="zone center-zone">
+    <p class="who" id="lastMsg">&nbsp;</p>
+    <div class="card center" id="centerCard"></div>
+  </div>
+  <div class="zone me-zone">
+    <div class="card mine" id="myCard"><div class="lock" hidden><span></span></div></div>
+    <p class="count"><span id="myName">Tú</span> · <b id="myCount">0</b> cartas</p>
+  </div>
+</section>
+
+<!-- DUELO en un celular -->
+<section id="duel" class="screen" aria-label="Duelo en un celular">
+  <div class="half top">
+    <p class="count"><span>Jugador 2</span> · <b id="c2">0</b></p>
+    <div class="card p2" id="card2"><div class="lock" hidden><span></span></div></div>
+  </div>
+  <div class="mid">
+    <button type="button" class="icon" id="quitDuel" aria-label="Salir al menú">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="card center" id="centerDuel"></div>
+  </div>
+  <div class="half bottom">
+    <div class="card p1" id="card1"><div class="lock" hidden><span></span></div></div>
+    <p class="count"><span>Jugador 1</span> · <b id="c1">0</b></p>
+  </div>
+</section>
+
+<div class="countdown" id="countdown" hidden><span></span></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="dlgEnd">
+  <h2 id="endTitle">¡Ganaste!</h2>
+  <p id="endText"></p>
+  <div class="row">
+    <button type="button" class="big" id="again">Revancha</button>
+    <button type="button" class="big alt" id="menu">Menú</button>
+  </div>
+</dialog>
+
+<dialog id="dlgHow">
+  <h2>¿Cómo se juega?</h2>
+  <ol>
+    <li>Se reparten todas las cartas y una queda en el <b>centro</b>.</li>
+    <li>Tu carta y la del centro siempre comparten <b>un solo símbolo</b>. Encuéntralo y tócalo en tu carta.</li>
+    <li>Si eres el primero, tu carta se va al centro y te toca la siguiente.</li>
+    <li>Si tocas uno equivocado, tu carta se <b>bloquea 2 segundos</b>.</li>
+    <li>El primero que se queda <b>sin cartas</b> gana.</li>
+  </ol>
+  <div class="row"><button type="button" class="big" id="howClose">¡Listo!</button></div>
+</dialog>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
