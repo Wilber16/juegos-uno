@@ -1,5 +1,6 @@
-import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=4';
-import { SYMBOLS } from './symbols.js?v=4';
+import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=5';
+import { SYMBOLS } from './symbols.js?v=5';
+import { onlineAvailable, connect } from './net.js?v=5';
 
 const $ = id => document.getElementById(id);
 window.addEventListener('error', e => toast('Error: ' + (e.message || e), 6000));
@@ -24,7 +25,7 @@ function seg(id, key, cast = x => x) {
       if (b.disabled) return;
       opts[key] = cast(b.dataset.v);
       box.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-      if (key === 'mode') $('botsOpts').hidden = opts.mode !== 'bots';
+      if (key === 'mode') updateModeUI();
     });
   });
 }
@@ -103,12 +104,10 @@ function start() {
   G.begin();
 }
 
-function baseGame(players, humans, screenId, centerEl) {
-  const seed = Math.floor(Math.random() * 1e9);
+function baseGame(state, humans, screenId, centerEl) {
   const g = {
-    state: newGame(players, opts.deck, seed),
-    seed, humans, timers: [], ticker: null, playing: false,
-    prevCenter: null, changedAt: 0,
+    state, seed: state.seed, humans, timers: [], ticker: null, playing: false,
+    prevCenter: null, changedAt: 0, now: () => Date.now(),
   };
   g.tap = (pid, sym, cardId) => {
     if (!g.playing) return;
@@ -154,7 +153,7 @@ function baseGame(players, humans, screenId, centerEl) {
     }
   };
   g.updateLocks = () => {
-    const now = Date.now();
+    const now = g.now();
     for (const h of g.humans) {
       const p = g.state.players.find(x => x.id === h.id);
       const lock = h.el.querySelector('.lock');
@@ -163,16 +162,21 @@ function baseGame(players, humans, screenId, centerEl) {
       if (left > 0) lock.firstElementChild.textContent = Math.ceil(left / 1000);
     }
   };
-  g.countdown = async () => {
+  g.countdown = async (startAt) => {
     const cd = $('countdown'), sp = cd.firstElementChild;
     cd.hidden = false;
+    if (startAt && g.now() > startAt + 500) { cd.hidden = true; return; } // te uniste con la partida en curso
+    if (startAt) { // en línea: todos arrancan a la misma hora del servidor
+      const wait = startAt - g.now() - 2600;
+      if (wait > 0) { sp.textContent = '…'; await new Promise(r => setTimeout(r, Math.min(wait, 8000))); }
+    }
     for (const n of ['3', '2', '1', '¡YA!']) { sp.textContent = n; pulse(sp, 'x'); sp.style.animation = 'none'; void sp.offsetWidth; sp.style.animation = ''; await new Promise(r => setTimeout(r, 650)); }
     cd.hidden = true;
   };
   g.begin = async () => {
     show(screenId);
     g.render();
-    await g.countdown();
+    await g.countdown(g.startAt);
     if (G !== g) return;
     g.playing = true;
     g.ticker = setInterval(g.updateLocks, 100);
@@ -198,7 +202,7 @@ function botGame() {
   const me = { id: 'me', name: $('name').value.trim() || 'Tú' };
   const bots = BOT_NAMES.slice(0, opts.bots).map((n, i) => ({ id: 'bot' + i, name: n }));
   const myEl = $('myCard');
-  const g = baseGame([me, ...bots], [{ id: 'me', el: myEl, nav: $('nav0') }], 'game', $('centerCard'));
+  const g = baseGame(newGame([me, ...bots], opts.deck, Math.floor(Math.random() * 1e9)), [{ id: 'me', el: myEl, nav: $('nav0') }], 'game', $('centerCard'));
   const lvl = BOT_LEVEL[opts.level], speed = DECK_SPEED[opts.deck];
   $('myName').textContent = me.name;
   $('lastMsg').innerHTML = '&nbsp;';
@@ -263,7 +267,7 @@ function duelGame() {
   const players = [{ id: 'p1', name: 'Jugador 1' }, { id: 'p2', name: 'Jugador 2' }];
   const c1 = $('card1'), c2 = $('card2'), cc = $('centerDuel');
   [c1, c2, cc].forEach(el => { el.dataset.cid = ''; });
-  const g = baseGame(players, [{ id: 'p1', el: c1, nav: $('nav1') }, { id: 'p2', el: c2, nav: $('nav2'), flip: true }], 'duel', cc);
+  const g = baseGame(newGame(players, opts.deck, Math.floor(Math.random() * 1e9)), [{ id: 'p1', el: c1, nav: $('nav1') }, { id: 'p2', el: c2, nav: $('nav2'), flip: true }], 'duel', cc);
   g.render = () => {
     g.paintCenter();
     g.renderHumans();
@@ -315,6 +319,232 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------------- Fin / salir ----------------
-$('again').onclick = () => { $('dlgEnd').close(); start(); };
-$('menu').onclick = () => { $('dlgEnd').close(); G?.stop(); show('lobby'); };
-$('quit').onclick = $('quitDuel').onclick = () => { G?.stop(); G = null; $('countdown').hidden = true; show('lobby'); };
+$('again').onclick = () => { $('dlgEnd').close(); if (G?.online) rematch(); else start(); };
+$('menu').onclick = () => { $('dlgEnd').close(); G?.stop(); if (R.code) leaveRoom(); else show('lobby'); };
+$('quit').onclick = $('quitDuel').onclick = () => { G?.stop(); G = null; $('countdown').hidden = true; if (R.code) leaveRoom(); else show('lobby'); };
+
+// ================= EN LÍNEA =================
+const R = { api: null, code: null, room: null, unsub: null };
+const FAKE_Q = new URLSearchParams(location.search).has('fake') ? 'fake=1' : '';
+
+function updateModeUI() {
+  $('botsOpts').hidden = opts.mode !== 'bots';
+  $('onlineOpts').hidden = opts.mode !== 'online';
+  $('play').hidden = opts.mode === 'online';
+  if (opts.mode === 'online' && !onlineAvailable()) $('onlineHint').textContent = 'El modo en línea se activa cuando conectemos el Firebase del juego.';
+}
+function myName() { return $('name').value.trim() || 'Jugador'; }
+function roomUrl(code) { return location.origin + location.pathname + '?sala=' + code + (FAKE_Q ? '&' + FAKE_Q : ''); }
+async function api() {
+  if (!onlineAvailable()) { toast('El modo en línea aún no está conectado', 2500); return null; }
+  try { R.api = await connect(); return R.api; }
+  catch (e) { toast('No se pudo conectar: ' + e.message, 4000); return null; }
+}
+function busy(on) { ['createRoom', 'joinRoom'].forEach(id => { $(id).disabled = on; }); }
+
+$('createRoom').onclick = async () => {
+  busy(true);
+  try {
+    const a = await api(); if (!a) return;
+    store.set('chapalo.name', $('name').value.trim());
+    const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code;
+    for (let i = 0; i < 6; i++) {
+      code = Array.from({ length: 4 }, () => L[Math.floor(Math.random() * L.length)]).join('');
+      if (!(await a.get(code))) break;
+    }
+    await a.set(code, {
+      host: a.uid, status: 'lobby', deck: opts.deck, createdAt: a.serverTime(),
+      players: { [a.uid]: { name: myName(), joinedAt: a.serverTime() } },
+    });
+    enterRoom(code);
+  } catch (e) { toast('Error al crear la sala: ' + e.message, 4000); }
+  finally { busy(false); }
+};
+
+$('joinRoom').onclick = () => joinRoom($('joinCode').value);
+$('joinCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+$('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(e.target.value); });
+
+async function joinRoom(raw) {
+  const code = String(raw || '').toUpperCase().trim();
+  if (!/^[A-Z]{4}$/.test(code)) return toast('El código tiene 4 letras');
+  busy(true);
+  try {
+    const a = await api(); if (!a) return;
+    store.set('chapalo.name', $('name').value.trim());
+    const room = await a.get(code);
+    if (!room) return toast('No existe la sala ' + code, 2500);
+    const inside = room.players && room.players[a.uid];
+    if (!inside) {
+      if (room.status !== 'lobby') return toast('Esa partida ya empezó. Pide que te esperen en la revancha.', 3000);
+      if (Object.keys(room.players || {}).length >= 8) return toast('La sala está llena (8 jugadores)', 2500);
+      await a.set(`${code}/players/${a.uid}`, { name: myName(), joinedAt: a.serverTime() });
+    }
+    enterRoom(code);
+  } catch (e) { toast('No se pudo entrar: ' + e.message, 4000); }
+  finally { busy(false); }
+}
+
+function enterRoom(code) {
+  R.code = code;
+  history.replaceState(null, '', '?sala=' + code + (FAKE_Q ? '&' + FAKE_Q : ''));
+  $('roomCode').textContent = code;
+  show('room');
+  R.unsub?.();
+  R.unsub = R.api.listen(code, onRoom);
+}
+
+function leaveRoom() {
+  const a = R.api, code = R.code, room = R.room;
+  R.unsub?.(); R.unsub = null; R.code = null; R.room = null;
+  if (a && code && room?.status === 'lobby') { a.cancelOnDisconnect(`${code}/players/${a.uid}`); a.remove(`${code}/players/${a.uid}`); }
+  if (G?.online) { G.stop(); G = null; }
+  history.replaceState(null, '', location.pathname + (FAKE_Q ? '?' + FAKE_Q : ''));
+  show('lobby');
+}
+$('leaveRoom').onclick = leaveRoom;
+
+$('shareRoom').onclick = async () => {
+  const url = roomUrl(R.code);
+  const text = `¡Juguemos ¡Chápalo!! Entra a la sala ${R.code}`;
+  try {
+    if (navigator.share) await navigator.share({ title: '¡Chápalo!', text, url });
+    else { await navigator.clipboard.writeText(url); toast('Enlace copiado'); }
+  } catch { /* el usuario canceló */ }
+};
+
+$('roomDeckSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  if (R.room?.host === R.api?.uid && R.room.status === 'lobby') R.api.update(R.code, { deck: b.dataset.v });
+}));
+
+$('startOnline').onclick = () => {
+  const room = R.room; if (!room) return;
+  const list = Object.entries(room.players || {})
+    .sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0))
+    .map(([id, p]) => ({ id, name: p.name }));
+  if (list.length < 2) return toast('Se necesitan al menos 2 jugadores');
+  launch(list, room.deck);
+};
+
+function launch(list, deck) {
+  const st = newGame(list, deck, Math.floor(Math.random() * 1e9));
+  return R.api.update(R.code, { status: 'playing', game: st, startAt: R.api.now() + 3800 });
+}
+function rematch() {
+  const st = G.state;
+  launch(st.players.map(p => ({ id: p.id, name: p.name })), st.deck);
+}
+
+function onRoom(room) {
+  if (!R.code) return;
+  if (!room) { toast('La sala se cerró', 2500); return leaveRoom(); }
+  R.room = room;
+  const uid = R.api.uid, isHost = room.host === uid;
+  const players = Object.entries(room.players || {}).sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
+  $('plist').innerHTML = players.map(([id, p]) =>
+    `<li><span>${esc(p.name)}${id === uid ? ' (tú)' : ''}</span>${id === room.host ? '<small>ANFITRIÓN</small>' : ''}</li>`).join('');
+  $('pcount').textContent = `(${players.length}/8)`;
+  $('roomDeckSeg').querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.v === room.deck); b.disabled = !isHost; });
+  $('startOnline').hidden = !isHost;
+  $('startOnline').disabled = players.length < 2;
+  $('startOnline').textContent = players.length < 2 ? 'Esperando jugadores…' : '¡Empezar!';
+  $('roomWait').hidden = isHost;
+
+  if (room.status === 'lobby') R.api.removeOnDisconnect(`${R.code}/players/${uid}`);
+  if (room.status === 'playing' && room.game) {
+    R.api.cancelOnDisconnect(`${R.code}/players/${uid}`);
+    const st = normalize(room.game);
+    if (!st.players.some(p => p.id === uid)) { $('roomWait').hidden = false; $('roomWait').textContent = 'Hay una partida en curso. Entras en la revancha.'; return; }
+    if (G?.online && G.seed === st.seed) G.sync(st);
+    else { if ($('dlgEnd').open) $('dlgEnd').close(); startOnline(st, room.startAt); }
+  }
+}
+
+function esc(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// Firebase quita arreglos vacíos y nulls: se restauran aquí.
+function arr(v) { return Array.isArray(v) ? v : v ? Object.values(v) : []; }
+function card(c) { return c ? { id: c.id ?? 0, s: arr(c.s) } : null; }
+function normalize(g) {
+  return {
+    ...g,
+    rev: g.rev || 0,
+    center: card(g.center),
+    players: arr(g.players).map(p => ({ id: p.id, name: p.name, pile: arr(p.pile).map(card), lockUntil: p.lockUntil || 0 })),
+    last: g.last || null,
+    winner: g.winner ?? null,
+    status: g.status || 'playing',
+  };
+}
+
+function startOnline(st, startAt) {
+  if (G) G.stop();
+  const a = R.api, uid = a.uid, myEl = $('myCard');
+  myEl.dataset.cid = ''; $('centerCard').dataset.cid = '';
+  ['in', 'shake'].forEach(c => myEl.classList.remove(c));
+  const g = baseGame(st, [{ id: uid, el: myEl, nav: $('nav0') }], 'game', $('centerCard'));
+  G = g;
+  g.online = true; g.now = a.now; g.startAt = startAt;
+  $('myName').textContent = st.players.find(p => p.id === uid).name;
+  $('lastMsg').innerHTML = '&nbsp;';
+
+  g.render = () => {
+    g.paintCenter();
+    g.renderHumans();
+    const now = g.now();
+    $('opps').innerHTML = g.state.players.filter(p => p.id !== uid).map(p =>
+      `<span class="opp${p.lockUntil > now ? ' locked' : ''}" data-id="${p.id}">${esc(p.name)} <b>${p.pile.length}</b></span>`).join('');
+  };
+  g.tap = async (pid, sym, cardId) => {
+    if (!g.playing) return;
+    const rev = g.state.rev;
+    let result = 'ignored';
+    try {
+      await a.transact(`${R.code}/game`, cur => {
+        if (cur == null) return cur;
+        const s0 = normalize(cur);
+        const r = apply(s0, { type: 'tap', playerId: uid, symbol: sym, rev, now: a.now(), cardId });
+        result = r.result;
+        return r.state === s0 ? undefined : r.state;
+      });
+    } catch (e) { return toast('Sin conexión: ' + e.message, 2500); }
+    if (result === 'wrong') { pulse(myEl, 'shake'); navigator.vibrate?.(120); }
+    else if (result === 'stale') toast('¡Te ganaron! Busca de nuevo');
+  };
+  g.sync = st2 => {
+    const old = g.state;
+    g.state = st2;
+    if (st2.rev !== old.rev && st2.last) {
+      const who = st2.players.find(p => p.id === st2.last.playerId);
+      const e = SYMBOLS[st2.last.symbol]?.e || '';
+      $('lastMsg').textContent = st2.last.playerId === uid ? `¡Chapaste ${e}!` : `${who?.name || 'Alguien'} chapó ${e}`;
+    }
+    g.render(); g.updateLocks();
+    if (st2.rev !== old.rev && st2.last && st2.last.playerId !== uid) {
+      const chip = document.querySelector(`.opp[data-id="${st2.last.playerId}"]`); if (chip) pulse(chip, 'flash');
+    }
+    if (st2.status === 'over' && !g.ended) { g.ended = true; g.finish(st2.winner); }
+  };
+  g.onResult = () => {};
+  g.endText = w => {
+    const me = g.state.players.find(p => p.id === uid);
+    $('endTitle').textContent = w.id === uid ? '¡Ganaste!' : `¡Ganó ${w.name}!`;
+    $('endText').textContent = w.id === uid ? 'Te quedaste sin cartas primero.' : `Te quedaron ${me.pile.length} de ${g.state.perCard} cartas.`;
+  };
+  g.begin();
+  if (st.status === 'over') { g.ended = true; g.finish(st.winner); }
+}
+
+// Entrar directo con un enlace ?sala=CODIGO
+(() => {
+  const q = new URLSearchParams(location.search).get('sala');
+  updateModeUI();
+  if (!q) return;
+  opts.mode = 'online';
+  $('modeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === 'online'));
+  updateModeUI();
+  $('joinCode').value = q.toUpperCase();
+  if ($('name').value.trim()) joinRoom(q);
+  else { $('onlineHint').textContent = 'Escribe tu nombre y toca Unirme.'; $('name').focus(); }
+})();

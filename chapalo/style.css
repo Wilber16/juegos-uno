@@ -107,3 +107,17 @@ dialog ol{padding-left:22px}
 .card.slideR{animation:slideR .22s ease-out}
 @keyframes slideL{from{transform:translateX(30%) rotate(8deg);opacity:.3}to{transform:none;opacity:1}}
 @keyframes slideR{from{transform:translateX(-30%) rotate(-8deg);opacity:.3}to{transform:none;opacity:1}}
+
+/* ---------- En línea ---------- */
+.joinrow{display:flex;gap:8px}
+.joinrow input{flex:1;min-width:0;font:400 24px 'Bungee',sans-serif;letter-spacing:4px;text-transform:uppercase;text-align:center;border:3px solid var(--white);background:transparent;color:var(--white);border-radius:14px;min-height:56px}
+.joinrow input::placeholder{color:#5D6C96;letter-spacing:2px}
+.joinrow .big{flex:0 0 auto}
+.hint{margin:0;color:var(--muted);font-weight:800;font-size:14px;text-align:center}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.code{margin:0;text-align:center;font:400 clamp(56px,18vw,84px)/1 'Bungee',sans-serif;color:var(--yel);letter-spacing:8px;text-shadow:4px 4px 0 #000}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.plist li{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;font-weight:900;font-size:17px}
+.plist li small{color:var(--yel);font-size:12px}
+#room .icon{align-self:flex-start}
+#room .seg button:disabled{opacity:.6;cursor:default}

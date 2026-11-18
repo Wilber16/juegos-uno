@@ -19,9 +19,16 @@ Juego de rapidez visual con temática limeña (modo "El Pozo"). Se reparten toda
 
 - Mazos: Mini (13 cartas, 4 símbolos), Rápido (31, 6) y Clásico (55, 8). Cada par de cartas comparte exactamente un símbolo (plano proyectivo).
 - Modos actuales: contra 1–3 bots (fácil, normal, pro) y duelo en un celular (pantalla dividida).
-- Próximo: modo en línea con salas (Firebase Realtime Database + Vercel).
+- En línea: salas de 2 a 8 jugadores con código de 4 letras y enlace para invitar. Firebase Realtime Database decide quién tocó primero (transacciones) y usa la hora del servidor para el bloqueo y la cuenta regresiva.
 
-Archivos en [`chapalo/`](chapalo/): `engine.js` (reglas puras, listo para Firebase), `symbols.js` (57 símbolos; admite imágenes propias), `app.js` (interfaz). Pruebas: `node chapalo/test-engine.mjs`.
+### Conectar Firebase
+1. Proyecto nuevo → Authentication → activar **Anónimo**.
+2. Realtime Database → crear → pegar las reglas de [`chapalo/database.rules.json`](chapalo/database.rules.json) en la pestaña **Reglas** → Publicar.
+3. App web → copiar `firebaseConfig` en [`chapalo/firebase-config.js`](chapalo/firebase-config.js).
+
+Para probar sin Firebase: abre `chapalo/?fake=1` en dos pestañas del mismo navegador.
+
+Archivos en [`chapalo/`](chapalo/): `engine.js` (reglas puras, listo para Firebase), `symbols.js` (57 símbolos; admite imágenes propias), `app.js` (interfaz), `net.js` (Firebase). Pruebas: `node chapalo/test-engine.mjs`.
 
 ## Publicar con GitHub Pages
 
