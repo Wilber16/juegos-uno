@@ -1,6 +1,6 @@
-import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=6';
-import { SYMBOLS } from './symbols.js?v=6';
-import { onlineAvailable, connect } from './net.js?v=6';
+import { newGame, apply, sharedSymbol, rng, DECKS } from './engine.js?v=7';
+import { SYMBOLS } from './symbols.js?v=7';
+import { onlineAvailable, connect } from './net.js?v=7';
 
 const $ = id => document.getElementById(id);
 window.addEventListener('error', e => toast('Error: ' + (e.message || e), 6000));
@@ -390,9 +390,26 @@ function enterRoom(code) {
   R.code = code;
   history.replaceState(null, '', '?sala=' + code + (FAKE_Q ? '&' + FAKE_Q : ''));
   $('roomCode').textContent = code;
+  showQr(roomUrl(code));
   show('room');
+  R.api.cleanup?.(); // borra salas de más de un día
   R.unsub?.();
   R.unsub = R.api.listen(code, onRoom);
+}
+
+// QR de la sala (librería local en vendor/, se carga solo cuando hace falta)
+let qrLib;
+function showQr(url) {
+  $('qr').innerHTML = '';
+  qrLib ??= new Promise((ok, fail) => {
+    const sc = document.createElement('script');
+    sc.src = 'vendor/qrcode.js?v=7'; sc.onload = () => ok(window.qrcode); sc.onerror = fail;
+    document.head.appendChild(sc);
+  });
+  qrLib.then(qrcode => {
+    const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+    $('qr').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 1, scalable: true });
+  }).catch(() => {});
 }
 
 function leaveRoom() {

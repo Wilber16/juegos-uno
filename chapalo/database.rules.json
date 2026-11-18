@@ -4,9 +4,11 @@
     ".write": false,
     "chapalo": {
       "rooms": {
+        ".indexOn": ["createdAt"],
+        ".read": "auth != null && query.orderByChild == 'createdAt' && query.limitToFirst <= 25",
         "$code": {
           ".read": "auth != null",
-          ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('status').val() === 'lobby'))",
+          ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('status').val() === 'lobby') || (!newData.exists() && data.child('createdAt').val() < now - 86400000))",
           ".validate": "$code.matches(/^[A-Z]{4}$/)"
         }
       }

@@ -121,3 +121,6 @@ dialog ol{padding-left:22px}
 .plist li small{color:var(--yel);font-size:12px}
 #room .icon{align-self:flex-start}
 #room .seg button:disabled{opacity:.6;cursor:default}
+.qr{align-self:center;width:min(52vw,200px);background:#fff;border-radius:16px;padding:10px;box-shadow:0 5px 0 #000}
+.qr:empty{display:none}
+.qr svg{display:block;width:100%;height:auto}

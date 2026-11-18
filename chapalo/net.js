@@ -1,7 +1,7 @@
 // Capa de red de ¡Chápalo! — todo lo que toca Firebase pasa por aquí.
 // Rutas relativas a chapalo/rooms. Con ?fake=1 en la URL se usa un backend
 // simulado en el navegador (localStorage, para probar con dos pestañas sin Firebase).
-import { firebaseConfig } from './firebase-config.js?v=6';
+import { firebaseConfig } from './firebase-config.js?v=7';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const ROOT = 'chapalo/rooms';
@@ -45,6 +45,17 @@ async function firebaseApi() {
     },
     removeOnDisconnect: p => D.onDisconnect(r(p)).remove(),
     cancelOnDisconnect: p => D.onDisconnect(r(p)).cancel(),
+    // Borra hasta 25 salas creadas hace más de un día (lo permiten las reglas).
+    cleanup: async () => {
+      try {
+        const old = Date.now() + offset - 24 * 3600 * 1000;
+        const q = D.query(r(''), D.orderByChild('createdAt'), D.endAt(old), D.limitToFirst(25));
+        const snap = await D.get(q);
+        const ups = {};
+        snap.forEach(ch => { ups[ch.key] = null; });
+        if (Object.keys(ups).length) await D.update(r(''), ups);
+      } catch { /* sin permiso o sin red: no importa */ }
+    },
   };
 }
 
